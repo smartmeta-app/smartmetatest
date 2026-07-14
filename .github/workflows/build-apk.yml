@@ -57,10 +57,19 @@ jobs:
               -dname "CN=Android Debug,O=Android,C=US"
           fi
 
+      # The Secrets Gradle Plugin requires .env.example to exist as its
+      # fallback properties file. Create it if it's missing from the repo
+      # (e.g. not committed) so project configuration doesn't fail.
+      - name: Ensure .env.example exists
+        run: |
+          if [ ! -f .env.example ]; then
+            echo "GEMINI_API_KEY=MY_GEMINI_API_KEY" > .env.example
+          fi
+
       # No GitHub secrets are used. The Secrets Gradle Plugin reads
       # GEMINI_API_KEY from .env, and since .env is not created here, it
-      # automatically falls back to the placeholder value already committed
-      # in .env.example. The build compiles fine with that placeholder.
+      # automatically falls back to the placeholder value in .env.example.
+      # The build compiles fine with that placeholder.
       - name: Build debug APK
         run: gradle assembleDebug --stacktrace
 
