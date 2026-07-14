@@ -1,0 +1,6 @@
+{
+  "name": "SMARTMETA",
+  "description": "Aplikasi SMARTMETA untuk integrasi layanan laporan warga, bank sampah, absensi, dan pelacakan petugas.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
