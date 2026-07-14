@@ -15,6 +15,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Debug - show repo root contents
+        run: |
+          echo "Working directory: $(pwd)"
+          ls -la
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
