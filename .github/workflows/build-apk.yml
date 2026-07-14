@@ -1,8 +1,10 @@
-name: Build Debug APK
+name: Android CI Build
 
 on:
   push:
-    branches: [ main ]
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
   workflow_dispatch:
 
 jobs:
@@ -10,26 +12,67 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
+          distribution: temurin
           java-version: '17'
 
-      - name: Setup Gradle
+      # This project ships without a checked-in Gradle wrapper, so Gradle is
+      # provisioned directly by the setup-gradle action instead of ./gradlew.
+      - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: current
+          cache-read-only: false
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
+      - name: Accept Android SDK licenses
+        run: yes | sdkmanager --licenses > /dev/null || true
 
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug
+      - name: Install required Android SDK packages
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0" || true
 
-      - name: Upload APK artifact
+      # app/build.gradle.kts points the "debugConfig" signing config at
+      # ./debug.keystore, which is intentionally .gitignore'd. Generate a
+      # standard Android debug keystore so the build can sign the debug APK.
+      - name: Generate debug keystore
+        run: |
+          if [ ! -f debug.keystore ]; then
+            keytool -genkeypair -v \
+              -keystore debug.keystore \
+              -storepass android \
+              -alias androiddebugkey \
+              -keypass android \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
+
+      # No GitHub secrets are used. The Secrets Gradle Plugin reads
+      # GEMINI_API_KEY from .env, and since .env is not created here, it
+      # automatically falls back to the placeholder value already committed
+      # in .env.example. The build compiles fine with that placeholder.
+      - name: Build debug APK
+        run: gradle assembleDebug --stacktrace
+
+      - name: Run unit tests
+        run: gradle testDebugUnitTest --stacktrace
+
+      - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
           name: smartmeta-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-reports
+          path: app/build/reports/tests/
+          if-no-files-found: ignore
