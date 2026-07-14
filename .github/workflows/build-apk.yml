@@ -10,6 +10,11 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      # Prevents KSP/IntelliJ-platform internals from trying to initialize
+      # an AWT event queue on headless CI runners (no display available),
+      # which otherwise crashes with a NullPointerException.
+      JAVA_TOOL_OPTIONS: -Djava.awt.headless=true
 
     steps:
       - name: Checkout repository
